@@ -9,7 +9,7 @@ import "remix_tests.sol";
 // Although it may fail compilation in 'Solidity Compiler' plugin
 // But it will work fine in 'Solidity Unit Testing' plugin
 import "remix_accounts.sol";
-import "../verifier3.sol";
+import "../contracts/artwork.sol";
 
 // File name has to end with '_test.sol', this file can contain more than one testSuite contracts
 contract testSuite is Artwork {
@@ -24,7 +24,7 @@ contract testSuite is Artwork {
     
     function checkAdminAddress() public {
         Assert.equal(msg.sender, RPC_wallet, "sender should be RPC wallet");
-        Assert.equal(msg.sender, SC_ADMIN, "Sender did not get assigned to ADMIN");
+        Assert.equal(msg.sender, smartcontractAdmin, "Sender did not get assigned to ADMIN");
     }
 
     function testMint() public {
@@ -34,7 +34,6 @@ contract testSuite is Artwork {
         Assert.equal(ownerOf(tokenId), first_owner_wallet, "owner#1 wallet should be owner of first token");
     }
 
-
     function testMetadata() public {
         Assert.equal(artworks[0].id, 0, "should be equal");
         Assert.equal(artworks[0].carrier, address(0), "should be equal");
@@ -42,8 +41,8 @@ contract testSuite is Artwork {
         Assert.equal(artworks[0].recipient, address(0), "should be equal");
         Assert.equal(artworks[0].status, "MINTED", "should be equal");
         Assert.equal(artworks[0].status, "MINTED", "should be equal");
-        Assert.equal(artworks[0].temperature_violation, false, "should be equal");
-        Assert.equal(artworks[0].humidity_violation, false, "should be equal");
+        Assert.equal(artworks[0].temperatureViolation, false, "should be equal");
+        Assert.equal(artworks[0].humidityViolation, false, "should be equal");
     }
 
 

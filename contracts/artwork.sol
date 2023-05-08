@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.18;
+pragma solidity ^0.8.18.0;
 
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
@@ -12,7 +12,7 @@ contract Artwork is ERC721 {
     using Counters for Counters.Counter;
     using strings for *;
 
-    address public SC_ADMIN;
+    address public smartcontractAdmin;
 
     Counters.Counter private _tokenIdCounter;
 
@@ -22,15 +22,15 @@ contract Artwork is ERC721 {
         address logger;
         address recipient;
         string status;
-        bool temperature_violation;
-        bool humidity_violation;
+        bool temperatureViolation;
+        bool humidityViolation;
     }
 
-    mapping(uint256 => ArtworkData) artworks;
+    mapping(uint256 => ArtworkData) internal artworks;
 
     enum Violation {
-        temperature_violation,
-        humidity_violation
+        temperatureViolation,
+        humidityViolation
     }
 
     event ViolationEvent(
@@ -38,10 +38,11 @@ contract Artwork is ERC721 {
         Violation violationType,
         bool isViolation
     );
-
+    /* solhint-disable */
     constructor() ERC721("Artwork", "ARTIS") {
-        SC_ADMIN = msg.sender;
+        smartcontractAdmin = msg.sender;
     }
+    /* solhint-enable */
 
     function safeMint(address to) public onlyAdmin returns (uint256) {
         uint256 tokenId = _tokenIdCounter.current();
@@ -53,8 +54,8 @@ contract Artwork is ERC721 {
             logger: address(0),
             recipient: address(0),
             status: "MINTED",
-            temperature_violation: false,
-            humidity_violation: false
+            temperatureViolation: false,
+            humidityViolation: false
         });
         artworks[tokenId] = newArtwork;
         return tokenId;
@@ -80,10 +81,11 @@ contract Artwork is ERC721 {
             bool
         )
     {
-        if (violationType == Violation.temperature_violation) {
-            artworks[tokenId].temperature_violation = true;
-        } else if (violationType == Violation.humidity_violation) {
-            artworks[tokenId].humidity_violation = true;
+        if (violationType == Violation.temperatureViolation) {
+            artworks[tokenId].temperatureViolation = true;
+        } else if (violationType == Violation.humidityViolation) {
+            artworks[tokenId].humidityViolation
+ = true;
         } else {
             require(false, "invalid violationType");
         }
@@ -179,8 +181,8 @@ contract Artwork is ERC721 {
         return getArtworkData(tokenId, sender);
     }
 
-    function changeSmartContractAdmin(address newSC_Admin) public onlyAdmin {
-        SC_ADMIN = newSC_Admin;
+    function changeSmartContractAdmin(address newsmartcontractAdmin) public onlyAdmin {
+        smartcontractAdmin = newsmartcontractAdmin;
     }
 
     // getters
@@ -196,8 +198,9 @@ contract Artwork is ERC721 {
             address logger,
             address recipient,
             string memory status,
-            bool temperature_violation,
-            bool humidity_violation
+            bool temperatureViolation,
+            bool humidityViolation
+
         )
     {
         require(_exists(tokenId), "token does not exist");
@@ -207,20 +210,20 @@ contract Artwork is ERC721 {
         logger = artworks[tokenId].logger;
         recipient = artworks[tokenId].recipient;
         status = artworks[tokenId].status;
-        humidity_violation = artworks[tokenId].humidity_violation;
-        temperature_violation = artworks[tokenId].temperature_violation;
+        humidityViolation = artworks[tokenId].humidityViolation;
+        temperatureViolation = artworks[tokenId].temperatureViolation;
     }
 
     /// proofs that signature of type did:ethr:<address> is controlled by <address>
     /// alternatively just use signed <address> to safe gas to slice string
-    function verifySignature(string calldata DID, bytes calldata signature)
+    function verifySignature(string calldata did, bytes calldata signature)
         public
         view
         onlyAdmin
         returns (bool)
     {
-        string memory didAddress = _extractAddressFromDID(DID);
-        bytes32 signedMessageHash = keccak256(abi.encode(DID));
+        string memory didAddress = _extractAddressFromdid(did);
+        bytes32 signedMessageHash = keccak256(abi.encode(did));
         address recoveredAddress = signedMessageHash.recover(signature);
 
         return
@@ -282,11 +285,9 @@ contract Artwork is ERC721 {
         return super.supportsInterface(interfaceId);
     }
 
-    
-
     // modifiers
     modifier onlyAdmin() {
-        require(msg.sender == SC_ADMIN, "only accessible by SC_admin wallet");
+        require(msg.sender == smartcontractAdmin, "only accessible by smartcontractAdmin wallet");
         _;
     }
 
@@ -306,8 +307,8 @@ contract Artwork is ERC721 {
     }
 
     // internal helper functions
-    
-    function _extractAddressFromDID(string memory did)
+
+    function _extractAddressFromdid(string memory did)
         internal
         pure
         returns (string memory)
