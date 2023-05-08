@@ -221,14 +221,13 @@ contract Artwork is ERC721 {
         public
         view
         onlyAdmin
-        returns (bool)
+        returns (address)
     {
         string memory didAddress = _extractAddressFromdid(did);
         bytes32 signedMessageHash = keccak256(abi.encode(did));
         address recoveredAddress = signedMessageHash.recover(signature);
-
-        return
-            _isStringEqual(Strings.toHexString(recoveredAddress), didAddress);
+        require(_isStringEqual(Strings.toHexString(recoveredAddress), didAddress), "did and recovered address do not match");
+        return recoveredAddress;
     }
 
     /// used to get addresses of different roles of an artwork (alongside ERC721 ownerOf)
