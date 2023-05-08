@@ -38,11 +38,11 @@ contract Artwork is ERC721 {
         Violation violationType,
         bool isViolation
     );
-    /* solhint-disable */
+    
+    // solhint-disable-next-line
     constructor() ERC721("Artwork", "ARTIS") {
         smartcontractAdmin = msg.sender;
     }
-    /* solhint-enable */
 
     function safeMint(address to) public onlyAdmin returns (uint256) {
         uint256 tokenId = _tokenIdCounter.current();

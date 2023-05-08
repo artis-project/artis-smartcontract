@@ -1,0 +1,12 @@
+{
+    "extends": "solhint:default",
+    "plugins": [],
+    "rules": {
+        "func-visibility": [
+            "warn",
+            {
+                "ignoreConstructors": true
+            }
+        ]
+    }
+}
