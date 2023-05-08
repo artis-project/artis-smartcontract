@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.18.0;
+pragma solidity ^0.8.18 .0;
 
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
@@ -38,7 +38,7 @@ contract Artwork is ERC721 {
         Violation violationType,
         bool isViolation
     );
-    
+
     // solhint-disable-next-line
     constructor() ERC721("Artwork", "ARTIS") {
         smartcontractAdmin = msg.sender;
@@ -84,8 +84,7 @@ contract Artwork is ERC721 {
         if (violationType == Violation.temperatureViolation) {
             artworks[tokenId].temperatureViolation = true;
         } else if (violationType == Violation.humidityViolation) {
-            artworks[tokenId].humidityViolation
- = true;
+            artworks[tokenId].humidityViolation = true;
         } else {
             require(false, "invalid violationType");
         }
@@ -181,7 +180,10 @@ contract Artwork is ERC721 {
         return getArtworkData(tokenId, sender);
     }
 
-    function changeSmartContractAdmin(address newsmartcontractAdmin) public onlyAdmin {
+    function changeSmartContractAdmin(address newsmartcontractAdmin)
+        public
+        onlyAdmin
+    {
         smartcontractAdmin = newsmartcontractAdmin;
     }
 
@@ -200,7 +202,6 @@ contract Artwork is ERC721 {
             string memory status,
             bool temperatureViolation,
             bool humidityViolation
-
         )
     {
         require(_exists(tokenId), "token does not exist");
@@ -287,7 +288,10 @@ contract Artwork is ERC721 {
 
     // modifiers
     modifier onlyAdmin() {
-        require(msg.sender == smartcontractAdmin, "only accessible by smartcontractAdmin wallet");
+        require(
+            msg.sender == smartcontractAdmin,
+            "only accessible by smartcontractAdmin wallet"
+        );
         _;
     }
 
