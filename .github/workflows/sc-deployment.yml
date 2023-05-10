@@ -18,10 +18,7 @@ jobs:
           node-version: latest
         
       - name: setting env variables
-        run: |
-          echo "ETHERSCAN_API_KEY=${{ secrets.ETHERSCAN_API_KEY }}" >> $GITHUB_ENV
-          echo "DEPLOYMENT_PRIVATE_KEY=${{ secrets.DEPLOYMENT_PRIVATE_KEY }}" >> $GITHUB_ENV
-          echo "ALCHEMY_API_KEY=${{ secrets.ALCHEMY_API_KEY }}" >> $GITHUB_ENV
+        run: echo "ETHERSCAN_API_KEY=${{ secrets.ETHERSCAN_API_KEY }}" >> $GITHUB_ENV
 
       - name: debugging
         run: echo "$ETHERSCAN_API_KEY"
