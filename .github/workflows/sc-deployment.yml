@@ -34,11 +34,4 @@ jobs:
 
       - name: verify contract on etherscan
         run: npx hardhat verify $SC_ADDRESS --network sapolia
-        
-      - uses: octokit/request-action@v2.1.0
-        with:
-          route: PATCH /orgs/{org}/actions/variables/{name}
-          org: artis-project
-          name: ARTIS_SC_ADDRESS
-          value: $SC_ADDRESS
        
