@@ -32,13 +32,14 @@ jobs:
       - name: deploy contract
         run: npx hardhat run scripts/deploy.ts --network sepolia
 
+      - name: waiting...
+        run: sleep 60s
+
       - name: verify contract on etherscan
         run: npx hardhat verify $SC_ADDRESS --network sepolia
         
       - name: output sc address
-        run: |
-          echo "::set-output name=SC_ADDRESS::$SC_ADDRESS"
-          echo "$SC_ADDRESS"
+        run: echo "::set-output name=SC_ADDRESS::$SC_ADDRESS"
     
   update_sc_address:
     runs-on: ubuntu-latest
