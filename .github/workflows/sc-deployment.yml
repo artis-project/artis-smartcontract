@@ -1,13 +1,12 @@
-name: Deploy to testnet and verify on etherscan
+name: deploy to testnet and verify sourcecode
 
 on:
   push:
-    branches: [ "dev" ]
+    branches: ["dev"]
   pull_request:
-    branches: [ "dev" ]
+    branches: ["dev"]
 
-permissions:
-  contents: read
+  workflow_dispatch:
 
 jobs:
   deploy_and_verify:
@@ -17,14 +16,19 @@ jobs:
       DEPLOYMENT_PRIVATE_KEY: ${{ secrets.DEPLOYMENT_PRIVATE_KEY }}
       ALCHEMY_API_KEY: ${{ secrets.ALCHEMY_API_KEY }}
     steps:
-    - uses: actions/checkout@v3
-    - name: Set up NodeJS
-      uses: actions/setup-node@v3
-    - name: Install dependencies
-      run: npm ci
-    - name: run deployment script
-      run: |
-        npx hardhat run scripts/deploy.ts --network sapolia
-    - name: Verify sourcecode on etherscan
-      run: |
-        npx hardhat verify $SC_ADDRESS --network sapolia
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: latest
+
+      - name: debugging
+        run: echo $ETHERSCAN_API_KEY
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: deploy contract
+        run: npx hardhat run scripts/deploy.ts --network sapolia
+
+      - name: verify contract on etherscan
+        run: npx hardhat verify $SC_ADDRESS --network sapolia
