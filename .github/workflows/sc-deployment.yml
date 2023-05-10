@@ -1,4 +1,4 @@
-name: deploy and verify 
+name: deploy and verify smartcontract
 
 on:
   push:
