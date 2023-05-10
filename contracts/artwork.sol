@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.18 .0;
+pragma solidity ^0.8.18;
 
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
-import "github.com/Arachnid/solidity-stringutils/strings.sol";
+import "./strings.sol";
 
 contract Artwork is ERC721 {
     using ECDSA for bytes32;
@@ -39,7 +39,6 @@ contract Artwork is ERC721 {
         bool isViolation
     );
 
-    // solhint-disable-next-line
     constructor() ERC721("Artwork", "ARTIS") {
         smartcontractAdmin = msg.sender;
     }
@@ -226,7 +225,9 @@ contract Artwork is ERC721 {
         string memory didAddress = _extractAddressFromdid(did);
         bytes32 signedMessageHash = keccak256(abi.encode(did));
         address recoveredAddress = signedMessageHash.recover(signature);
-        require(_isStringEqual(Strings.toHexString(recoveredAddress), didAddress), "did and recovered address do not match");
+        require(_isStringEqual(Strings.toHexString(recoveredAddress), didAddress),
+            "did and recovered address do not match"
+        );
         return recoveredAddress;
     }
 
