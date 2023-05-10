@@ -1,4 +1,4 @@
-name: deploy & verify 
+name: deploy and verify 
 
 on:
   push:
@@ -16,12 +16,13 @@ jobs:
       ETHERSCAN_API_KEY: ${{ secrets.ETHERSCAN_API_KEY }}
       ALCHEMY_API_KEY: ${{ secrets.ALCHEMY_API_KEY }}
       DEPLOYMENT_PRIVATE_KEY: ${{ secrets.DEPLOYMENT_PRIVATE_KEY }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-node@v3
         with:
-          node-version: latest
-
+          node-version: latest   
+          
       - name: debugging
         run: echo "$ETHERSCAN_API_KEY"
 
@@ -33,3 +34,12 @@ jobs:
 
       - name: verify contract on etherscan
         run: npx hardhat verify $SC_ADDRESS --network sapolia
+        
+      - uses: octokit/request-action@v2.1.0
+        with:
+          route: PATCH /repos/{owner}/{repo}/actions/variables/{name}
+          owner: artis-project
+          repo: artis-smartcontract
+          name: ARTIS_SC_ADDRESS
+          value: $SC_ADDRESS
+       
