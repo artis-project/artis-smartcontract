@@ -22,8 +22,7 @@ contract Artwork is ERC721 {
         address logger;
         address recipient;
         string status;
-        bool temperatureViolation;
-        bool humidityViolation;
+        string violationTimestamp;
     }
 
     mapping(uint256 => ArtworkData) internal artworks;
@@ -39,11 +38,14 @@ contract Artwork is ERC721 {
         bool isViolation
     );
 
+    event MintEvent(uint256 indexed tokenId, address owner);
+    event UpdateEvent(uint256 indexed tokenId, ArtworkData newData);
+
     constructor() ERC721("Artwork", "ARTIS") {
         smartcontractAdmin = msg.sender;
     }
 
-    function safeMint(address to) public onlyAdmin returns (uint256) {
+    function safeMint(address to) public onlyAdmin {
         uint256 tokenId = _tokenIdCounter.current();
         _tokenIdCounter.increment();
         _safeMint(to, tokenId);
@@ -53,222 +55,111 @@ contract Artwork is ERC721 {
             logger: address(0),
             recipient: address(0),
             status: "MINTED",
-            temperatureViolation: false,
-            humidityViolation: false
+            violationTimestamp: ""
         });
         artworks[tokenId] = newArtwork;
-        return tokenId;
+        emit MintEvent(tokenId, to);
     }
 
     // setters
-
-    function setViolation(
-        Violation violationType,
-        uint256 tokenId,
-        address sender
-    )
-        public
-        onlyLogger(sender, tokenId)
-        onlyAdmin
-        returns (
-            uint256,
-            address,
-            address,
-            address,
-            string memory,
-            bool,
-            bool
-        )
-    {
-        if (violationType == Violation.temperatureViolation) {
-            artworks[tokenId].temperatureViolation = true;
-        } else if (violationType == Violation.humidityViolation) {
-            artworks[tokenId].humidityViolation = true;
-        } else {
-            require(false, "invalid violationType");
-        }
-        emit ViolationEvent(tokenId, violationType, true);
-        return getArtworkData(tokenId, sender);
-    }
-
-    function setCarrier(
-        address carrier,
-        uint256 tokenId,
-        address sender
-    )
-        public
-        onlyOwner(sender, tokenId)
-        onlyAdmin
-        returns (
-            uint256,
-            address,
-            address,
-            address,
-            string memory,
-            bool,
-            bool
-        )
-    {
-        artworks[tokenId].carrier = carrier;
-        return getArtworkData(tokenId, sender);
-    }
-
-    function setRecipient(
-        address recipient,
-        uint256 tokenId,
-        address sender
-    )
-        public
-        onlyOwner(sender, tokenId)
-        onlyAdmin
-        returns (
-            uint256,
-            address,
-            address,
-            address,
-            string memory,
-            bool,
-            bool
-        )
-    {
-        artworks[tokenId].recipient = recipient;
-        return getArtworkData(tokenId, sender);
-    }
-
-    function setLogger(
-        address logger,
-        uint256 tokenId,
-        address sender
-    )
-        public
-        onlyOwner(sender, tokenId)
-        onlyAdmin
-        returns (
-            uint256,
-            address,
-            address,
-            address,
-            string memory,
-            bool,
-            bool
-        )
-    {
-        artworks[tokenId].logger = logger;
-        return getArtworkData(tokenId, sender);
-    }
-
-    function setStatus(
-        string memory status,
-        uint256 tokenId,
-        address sender
-    )
-        public
-        onlyOwner(sender, tokenId)
-        onlyAdmin
-        returns (
-            uint256,
-            address,
-            address,
-            address,
-            string memory,
-            bool,
-            bool
-        )
-    {
-        artworks[tokenId].status = status;
-        return getArtworkData(tokenId, sender);
-    }
-
-    function changeSmartContractAdmin(address newsmartcontractAdmin)
-        public
-        onlyAdmin
-    {
+    function changeSmartContractAdmin(
+        address newsmartcontractAdmin
+    ) public onlyAdmin {
         smartcontractAdmin = newsmartcontractAdmin;
     }
 
-    // getters
+    // because the artwork data always needs to have all properties populated
+    // the Address(1) is used to mark no change, Address(0) is reserved for not set
+    function updateArtworkData(
+        ArtworkData memory data,
+        address sender
+    ) public onlyAdmin exists(data.id) write(sender, data) {
+        if ((bytes(data.violationTimestamp).length != 0)) {
+            artworks[data.id].violationTimestamp = data.violationTimestamp;
+        }
+        if ((bytes(data.status).length != 0)) {
+            artworks[data.id].violationTimestamp = data.violationTimestamp;
+        }
+        if (data.carrier != address(1)) {
+            artworks[data.id].carrier = data.carrier;
+        }
+        if (data.recipient != address(1)) {
+            artworks[data.id].carrier = data.carrier;
+        }
+        if (data.logger != address(1)) {
+            artworks[data.id].carrier = data.carrier;
+        }
+        emit UpdateEvent(data.id, artworks[data.id]);
+    }
 
-    function getArtworkData(uint256 tokenId, address sender)
+    // getter
+    function getArtworkData(
+        uint256 tokenId,
+        address sender
+    )
         public
         view
         onlyAdmin
+        exists(tokenId)
         read(sender, tokenId)
         returns (
             uint256 id,
+            address owner,
             address carrier,
             address logger,
             address recipient,
             string memory status,
-            bool temperatureViolation,
-            bool humidityViolation
+            string memory violationTimestamp
         )
     {
-        require(_exists(tokenId), "token does not exist");
-
         id = artworks[tokenId].id;
+        owner = ownerOf(tokenId);
         carrier = artworks[tokenId].carrier;
         logger = artworks[tokenId].logger;
         recipient = artworks[tokenId].recipient;
         status = artworks[tokenId].status;
-        humidityViolation = artworks[tokenId].humidityViolation;
-        temperatureViolation = artworks[tokenId].temperatureViolation;
+        violationTimestamp = artworks[tokenId].violationTimestamp;
     }
 
     /// proofs that signature of type did:ethr:<address> is controlled by <address>
     /// alternatively just use signed <address> to safe gas to slice string
-    function verifySignature(string calldata did, bytes calldata signature)
-        public
-        view
-        onlyAdmin
-        returns (address)
-    {
+    function verifySignature(
+        string calldata did,
+        bytes calldata signature
+    ) public view onlyAdmin returns (address) {
         string memory didAddress = _extractAddressFromdid(did);
         bytes32 signedMessageHash = keccak256(abi.encode(did));
         address recoveredAddress = signedMessageHash.recover(signature);
-        require(_isStringEqual(Strings.toHexString(recoveredAddress), didAddress),
+        require(
+            _isStringEqual(Strings.toHexString(recoveredAddress), didAddress),
             "did and recovered address do not match"
         );
         return recoveredAddress;
     }
 
     /// used to get addresses of different roles of an artwork (alongside ERC721 ownerOf)
-    function carrierOf(uint256 tokenId)
-        public
-        view
-        onlyAdmin
-        returns (address)
-    {
-        require(_exists(tokenId), "Token does not exist");
-        address carrier = artworks[tokenId].carrier;
-        require(carrier != address(0), "no carrier defined");
+    function carrierOf(
+        uint256 tokenId
+    ) public view onlyAdmin exists(tokenId) returns (address) {
         return artworks[tokenId].carrier;
     }
 
-    function loggerOf(uint256 tokenId) public view onlyAdmin returns (address) {
-        require(_exists(tokenId), "Token does not exist");
-        address logger = artworks[tokenId].logger;
-        require(logger != address(0), "no logger defined");
+    function loggerOf(
+        uint256 tokenId
+    ) public view onlyAdmin exists(tokenId) returns (address) {
         return artworks[tokenId].logger;
     }
 
-    function recipientOf(uint256 tokenId)
-        public
-        view
-        onlyAdmin
-        returns (address)
-    {
-        require(_exists(tokenId), "Token does not exist");
-        address recipient = artworks[tokenId].recipient;
-        require(recipient != address(0), "no recipient defined");
+    function recipientOf(
+        uint256 tokenId
+    ) public view onlyAdmin exists(tokenId) returns (address) {
         return artworks[tokenId].recipient;
     }
 
-    function isAuthorizedRead(address sender, uint256 tokenId)
-        public
-        view
-        onlyAdmin
-        returns (bool)
-    {
+    function isAuthorizedRead(
+        address sender,
+        uint256 tokenId
+    ) public view onlyAdmin returns (bool) {
         return
             ownerOf(tokenId) == sender ||
             carrierOf(tokenId) == sender ||
@@ -277,16 +168,19 @@ contract Artwork is ERC721 {
 
     // overrides
 
-    function supportsInterface(bytes4 interfaceId)
-        public
-        view
-        override(ERC721)
-        returns (bool)
-    {
+    function supportsInterface(
+        bytes4 interfaceId
+    ) public view override(ERC721) returns (bool) {
         return super.supportsInterface(interfaceId);
     }
 
     // modifiers
+
+    modifier exists(uint256 tokenId) {
+        require(_exists(tokenId), "Token does not exist");
+        _;
+    }
+
     modifier onlyAdmin() {
         require(
             msg.sender == smartcontractAdmin,
@@ -310,13 +204,23 @@ contract Artwork is ERC721 {
         _;
     }
 
+    modifier write(address sender, ArtworkData memory data) {
+        if (bytes(data.violationTimestamp).length != 0) {
+            require(
+                sender == loggerOf(data.id),
+                "only logger is allowed to access this field"
+            );
+        } else {
+            require(sender == ownerOf(data.id));
+        }
+        _;
+    }
+
     // internal helper functions
 
-    function _extractAddressFromdid(string memory did)
-        internal
-        pure
-        returns (string memory)
-    {
+    function _extractAddressFromdid(
+        string memory did
+    ) internal pure returns (string memory) {
         string memory prefix = "did:ethr:";
         strings.slice memory s = did.toSlice();
         strings.slice memory prefixSlice = prefix.toSlice();
@@ -324,11 +228,10 @@ contract Artwork is ERC721 {
         return _toLower(addressSlice.toString());
     }
 
-    function _isStringEqual(string memory str1, string memory str2)
-        internal
-        pure
-        returns (bool)
-    {
+    function _isStringEqual(
+        string memory str1,
+        string memory str2
+    ) internal pure returns (bool) {
         return keccak256(abi.encode(str1)) == keccak256(abi.encode(str2));
     }
 
