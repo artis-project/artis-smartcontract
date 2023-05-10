@@ -16,6 +16,7 @@ jobs:
       ETHERSCAN_API_KEY: ${{ secrets.ETHERSCAN_API_KEY }}
       ALCHEMY_API_KEY: ${{ secrets.ALCHEMY_API_KEY }}
       DEPLOYMENT_PRIVATE_KEY: ${{ secrets.DEPLOYMENT_PRIVATE_KEY }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       
     steps:
       - uses: actions/checkout@v3
@@ -38,20 +39,10 @@ jobs:
       - name: verify contract on etherscan
         run: npx hardhat verify $SC_ADDRESS --network sepolia
         
-      - name: output sc address
-        run: echo "::set-output name=SC_ADDRESS::$SC_ADDRESS"
-    
-  update_sc_address:
-    runs-on: ubuntu-latest
-    needs: deploy_and_verify
-    env:
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      
-    steps:
-      - uses: octokit/request-action@v2.1.0
+      - name: exporting sc address
+        uses: octokit/request-action@v2.1.0
+        id: update_organization_variable
         with:
-          route: PATCH /orgs/{org}/actions/variables/{name}
-          org: artis-project
-          name: ARTIS_SC_ADDRESS
-          value: ${{ needs.deploy_and_verify.outputs.SC_ADDRESS }}
-       
+          route: PATCH /orgs/artis-project/actions/variables/ARTIS_SC_ADDRESS
+          body: ${{ toJSON("{"name":"ARTIS_SC_ADDRESS", "value":"$SC_ADDRESS"}") }}
+    
