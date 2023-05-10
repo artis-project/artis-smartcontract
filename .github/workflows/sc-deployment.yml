@@ -21,21 +21,19 @@ jobs:
       - uses: actions/checkout@v3
       - uses: actions/setup-node@v3
         with:
-          node-version: latest   
-          
-      - name: debugging
-        run: echo "$ETHERSCAN_API_KEY"
+          node-version: 18   
 
       - name: Install dependencies
         run: npm ci
+
+      - name: compile solidity
+        run: npx hardhat compile
 
       - name: deploy contract
         run: npx hardhat run scripts/deploy.ts --network sepolia
 
       - name: verify contract on etherscan
-        run: |
-          npx hardhat verify $SC_ADDRESS --network sepolia
-          echo $SC_ADDRESS
+        run: npx hardhat verify $SC_ADDRESS --network sepolia
         
       - name: output sc address
         run: |
