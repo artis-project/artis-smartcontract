@@ -20,7 +20,7 @@ jobs:
       
     steps:
       - uses: actions/checkout@v3
-      
+
       - uses: actions/setup-node@v3
         with:
           node-version: 18   
@@ -45,5 +45,5 @@ jobs:
         id: update_organization_variable
         with:
           route: PATCH /orgs/artis-project/actions/variables/ARTIS_SC_ADDRESS
-          body: ${{ toJSON("{"name":"ARTIS_SC_ADDRESS", "value":"$SC_ADDRESS"}") }}
+          body: ${{ toJSON('{'name':'ARTIS_SC_ADDRESS','value':$SC_ADDRESS}') }}
     
