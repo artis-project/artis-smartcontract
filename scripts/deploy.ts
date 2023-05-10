@@ -1,4 +1,5 @@
 import { ethers } from "hardhat";
+import * as core from '@actions/core'
 
 async function deploy() {
   const Artwork = await ethers.getContractFactory("Artwork");
@@ -10,7 +11,7 @@ async function deploy() {
   console.log(
     `Artwork contract with deployed to ${artwork.address}`
   );
-  process.env.SC_ADDRESS = artwork.address
+  core.exportVariable('SC_ADDRESS', artwork.address)
 }
 
 // We recommend this pattern to be able to use async/await everywhere

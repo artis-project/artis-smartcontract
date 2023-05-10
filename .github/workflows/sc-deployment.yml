@@ -33,7 +33,9 @@ jobs:
         run: npx hardhat run scripts/deploy.ts --network sepolia
 
       - name: verify contract on etherscan
-        run: npx hardhat verify $SC_ADDRESS --network sepolia
+        run: |
+          npx hardhat verify $SC_ADDRESS --network sepolia
+          echo $SC_ADDRESS
         
       - name: output sc address
         run: |
@@ -42,6 +44,7 @@ jobs:
     
   update_sc_address:
     runs-on: ubuntu-latest
+    needs: deploy_and_verify
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       
