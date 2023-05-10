@@ -1,4 +1,4 @@
-name: deploy to testnet and verify sourcecode
+name: deploy & verify 
 
 on:
   push:
