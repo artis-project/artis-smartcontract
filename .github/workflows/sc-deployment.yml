@@ -47,5 +47,5 @@ jobs:
           body: "{\"name\":\"ARTIS_SC_ADDRESS\",\"value\":\"$SC_ADDRESS\"}"
         with:
           route: PATCH /orgs/artis-project/actions/variables/ARTIS_SC_ADDRESS
-          body: ${{ toJSON(env.body}}
+          body: ${{ toJSON(env.body)}}
     
