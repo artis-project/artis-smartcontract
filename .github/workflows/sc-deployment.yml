@@ -45,5 +45,5 @@ jobs:
         id: update_organization_variable
         with:
           route: PATCH /orgs/artis-project/actions/variables/ARTIS_SC_ADDRESS
-          body: ${{ toJSON("{\"name\":\"ARTIS_SC_ADDRESS\",\"value\":\"$SC_ADDRESS\"}") }}
+          body: ${{ fromJSON("{\"name\":\"ARTIS_SC_ADDRESS\",\"value\":\"$SC_ADDRESS\"}") }}
     
