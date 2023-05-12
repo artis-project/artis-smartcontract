@@ -43,7 +43,9 @@ jobs:
       - name: exporting sc address
         uses: octokit/request-action@v2.1.0
         id: update_organization_variable
+        env:
+          body: "{\"name\":\"ARTIS_SC_ADDRESS\",\"value\":\"$SC_ADDRESS\"}"
         with:
           route: PATCH /orgs/artis-project/actions/variables/ARTIS_SC_ADDRESS
-          body: ${{ fromJSON(\{\"name\":\"ARTIS_SC_ADDRESS\",\"value\":\"$SC_ADDRESS\"\}) }}
+          body: ${{ toJSON(env.body}}
     
