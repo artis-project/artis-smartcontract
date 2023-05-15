@@ -1,5 +1,8 @@
 import { ethers } from "hardhat";
 import * as core from '@actions/core'
+import { request } from "@octokit/request";
+import dotenv from "dotenv"
+dotenv.config();
 
 async function deploy() {
   const Artwork = await ethers.getContractFactory("Artwork");
@@ -12,10 +15,20 @@ async function deploy() {
     `Artwork contract with deployed to ${artwork.address}`
   );
   core.exportVariable('SC_ADDRESS', artwork.address)
+
+  // updating sc address in organizations variable
+  const result = await request("PATCH /orgs/{org}/actions/variables/{name}", {
+    headers: {
+      authorization: process.env.GITHUB_TOKEN,
+    },
+    org: process.env.ARTIS_ORG_NAME as string,
+    name: process.env.ARTIS_SC_VARIABLE_NAME as string,
+    value: artwork.address
+  });
+  console.log("response of updating sc address in organization variable: " + result.data)
+
 }
 
-// We recommend this pattern to be able to use async/await everywhere
-// and properly handle errors.
 deploy().catch((error) => {
   console.error(error);
   process.exitCode = 1;

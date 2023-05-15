@@ -22,7 +22,7 @@ contract Artwork is ERC721 {
         address logger;
         address recipient;
         string status;
-        string violationTimestamp;
+        uint256 violationTimestamp;
     }
 
     mapping(uint256 => ArtworkData) internal artworks;
@@ -38,8 +38,8 @@ contract Artwork is ERC721 {
         bool isViolation
     );
 
-    event MintEvent(uint256 indexed tokenId, address owner);
-    event UpdateEvent(uint256 indexed tokenId, ArtworkData newData);
+    event Minted(uint256 indexed tokenId, address owner);
+    event Updated(uint256 indexed tokenId, ArtworkData newData);
 
     constructor() ERC721("Artwork", "ARTIS") {
         smartcontractAdmin = msg.sender;
@@ -55,10 +55,10 @@ contract Artwork is ERC721 {
             logger: address(0),
             recipient: address(0),
             status: "MINTED",
-            violationTimestamp: ""
+            violationTimestamp: 0
         });
         artworks[tokenId] = newArtwork;
-        emit MintEvent(tokenId, to);
+        emit Minted(tokenId, to);
     }
 
     // setters
@@ -74,22 +74,22 @@ contract Artwork is ERC721 {
         ArtworkData memory data,
         address sender
     ) public onlyAdmin exists(data.id) write(sender, data) {
-        if ((bytes(data.violationTimestamp).length != 0)) {
+        if (data.violationTimestamp != 0) {
             artworks[data.id].violationTimestamp = data.violationTimestamp;
         }
         if ((bytes(data.status).length != 0)) {
-            artworks[data.id].violationTimestamp = data.violationTimestamp;
+            artworks[data.id].status = data.status;
         }
         if (data.carrier != address(1)) {
             artworks[data.id].carrier = data.carrier;
         }
         if (data.recipient != address(1)) {
-            artworks[data.id].carrier = data.carrier;
+            artworks[data.id].recipient = data.recipient;
         }
         if (data.logger != address(1)) {
-            artworks[data.id].carrier = data.carrier;
+            artworks[data.id].logger = data.logger;
         }
-        emit UpdateEvent(data.id, artworks[data.id]);
+        emit Updated(data.id, artworks[data.id]);
     }
 
     // getter
@@ -109,7 +109,7 @@ contract Artwork is ERC721 {
             address logger,
             address recipient,
             string memory status,
-            string memory violationTimestamp
+            uint256 violationTimestamp
         )
     {
         id = artworks[tokenId].id;
@@ -205,7 +205,7 @@ contract Artwork is ERC721 {
     }
 
     modifier write(address sender, ArtworkData memory data) {
-        if (bytes(data.violationTimestamp).length != 0) {
+        if (data.violationTimestamp != 0) {
             require(
                 sender == loggerOf(data.id),
                 "only logger is allowed to access this field"
