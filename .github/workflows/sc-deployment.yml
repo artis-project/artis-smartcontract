@@ -16,7 +16,7 @@ jobs:
       ETHERSCAN_API_KEY: ${{ secrets.ETHERSCAN_API_KEY }}
       ALCHEMY_API_KEY: ${{ secrets.ALCHEMY_API_KEY }}
       DEPLOYMENT_PRIVATE_KEY: ${{ secrets.DEPLOYMENT_PRIVATE_KEY }}
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      UPDATE_SC_ADDRESS_TOKEN: ${{ secrets.UPDATE_SC_ADDRESS_TOKEN }}
       ARTIS_ORG_NAME: "artis-project"
       ARTIS_SC_VARIABLE_NAME: "ARTIS_SC_ADDRESS"
       

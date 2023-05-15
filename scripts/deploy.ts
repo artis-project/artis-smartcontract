@@ -19,7 +19,7 @@ async function deploy() {
   // updating sc address in organizations variable
   const result = await request("PATCH /orgs/{org}/actions/variables/{name}", {
     headers: {
-      authorization: process.env.GITHUB_TOKEN,
+      authorization: process.env.UPDATE_SC_ADDRESS_TOKEN,
     },
     org: process.env.ARTIS_ORG_NAME as string,
     name: process.env.ARTIS_SC_VARIABLE_NAME as string,
