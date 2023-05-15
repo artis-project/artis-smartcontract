@@ -19,13 +19,13 @@ async function deploy() {
   // updating sc address in organizations variable
   const result = await request("PATCH /orgs/{org}/actions/variables/{name}", {
     headers: {
-      authorization: process.env.UPDATE_SC_ADDRESS_TOKEN,
+      authorization: "Bearer " + process.env.UPDATE_SC_ADDRESS_TOKEN,
     },
     org: process.env.ARTIS_ORG_NAME as string,
     name: process.env.ARTIS_SC_VARIABLE_NAME as string,
     value: artwork.address
   });
-  console.log("response of updating sc address in organization variable: " + result.data)
+  console.log("response code of updating sc address in organization variable: " + result.status)
 
 }
 
