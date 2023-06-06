@@ -11,8 +11,8 @@ const config: HardhatUserConfig = {
   },
   networks: {
     sepolia: {
-      url: `https://eth-sepolia.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY}`,
-      accounts: [ process.env.DEPLOYMENT_PRIVATE_KEY as string ]
+      url: process.env.ALCHEMY_PROVIDER_URL,
+      accounts: [ process.env.SMARTCONTRACT_ADMIN_PRIVATE_KEY as string ]
     }
   }
 };
