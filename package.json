@@ -21,7 +21,7 @@
   "homepage": "https://github.com/flyingbeat/artis-smartcontract#readme",
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^2.0.2",
-    "hardhat": "^2.14.0",
+    "hardhat": "^2.16.0",
     "solhint": "^3.4.1"
   },
   "dependencies": {
