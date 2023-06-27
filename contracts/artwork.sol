@@ -5,12 +5,10 @@ import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
-import "./strings.sol";
 
 contract Artwork is ERC721 {
     using ECDSA for bytes32;
     using Counters for Counters.Counter;
-    using strings for *;
 
     address public smartcontractAdmin;
 
@@ -18,6 +16,7 @@ contract Artwork is ERC721 {
 
     struct ArtworkData {
         uint256 id;
+        string objectId;
         address carrier;
         address logger;
         address recipient;
@@ -27,38 +26,26 @@ contract Artwork is ERC721 {
 
     mapping(uint256 => ArtworkData) internal artworks;
 
-    enum Violation {
-        temperatureViolation,
-        humidityViolation
-    }
-
-    event ViolationEvent(
-        uint256 indexed tokenId,
-        Violation violationType,
-        bool isViolation
-    );
-
-    event Minted(uint256 indexed tokenId, address owner);
-    event Updated(uint256 indexed tokenId, ArtworkData newData);
+    event Updated(uint256 indexed tokenId, ArtworkData newData, address owner);
 
     constructor() ERC721("Artwork", "ARTIS") {
         smartcontractAdmin = msg.sender;
     }
 
-    function safeMint(address to) public onlyAdmin {
+    function safeMint(address to, ArtworkData memory data) public onlyAdmin {
         uint256 tokenId = _tokenIdCounter.current();
         _tokenIdCounter.increment();
         _safeMint(to, tokenId);
         ArtworkData memory newArtwork = ArtworkData({
             id: tokenId,
-            carrier: address(0),
-            logger: address(0),
-            recipient: address(0),
+            objectId: data.objectId,
+            carrier: data.carrier,
+            logger: data.logger,
+            recipient: data.recipient,
             status: "MINTED",
             violationTimestamp: 0
         });
         artworks[tokenId] = newArtwork;
-        emit Minted(tokenId, to);
     }
 
     // setters
@@ -80,6 +67,9 @@ contract Artwork is ERC721 {
         if ((bytes(data.status).length != 0)) {
             artworks[data.id].status = data.status;
         }
+        if ((bytes(data.objectId).length != 0)) {
+            artworks[data.id].objectId = data.objectId;
+        }
         if (data.carrier != address(1)) {
             artworks[data.id].carrier = data.carrier;
         }
@@ -87,9 +77,12 @@ contract Artwork is ERC721 {
             artworks[data.id].recipient = data.recipient;
         }
         if (data.logger != address(1)) {
+            require(_isStringEqual(artworks[data.id].status, "IN_TRANSIT"),
+            "logger cannot be updated in transit"
+            );
             artworks[data.id].logger = data.logger;
         }
-        emit Updated(data.id, artworks[data.id]);
+        emit Updated(data.id, artworks[data.id], ownerOf(data.id));
     }
 
     // getter
@@ -104,6 +97,7 @@ contract Artwork is ERC721 {
         read(sender, tokenId)
         returns (
             uint256 id,
+            string memory objectId,
             address owner,
             address carrier,
             address logger,
@@ -113,28 +107,13 @@ contract Artwork is ERC721 {
         )
     {
         id = artworks[tokenId].id;
+        objectId = artworks[tokenId].objectId;
         owner = ownerOf(tokenId);
         carrier = artworks[tokenId].carrier;
         logger = artworks[tokenId].logger;
         recipient = artworks[tokenId].recipient;
         status = artworks[tokenId].status;
         violationTimestamp = artworks[tokenId].violationTimestamp;
-    }
-
-    /// proofs that signature of type did:ethr:<address> is controlled by <address>
-    /// alternatively just use signed <address> to safe gas to slice string
-    function verifySignature(
-        string calldata did,
-        bytes calldata signature
-    ) public view onlyAdmin returns (address) {
-        string memory didAddress = _extractAddressFromdid(did);
-        bytes32 signedMessageHash = keccak256(abi.encode(did));
-        address recoveredAddress = signedMessageHash.recover(signature);
-        require(
-            _isStringEqual(Strings.toHexString(recoveredAddress), didAddress),
-            "did and recovered address do not match"
-        );
-        return recoveredAddress;
     }
 
     /// used to get addresses of different roles of an artwork (alongside ERC721 ownerOf)
@@ -217,36 +196,10 @@ contract Artwork is ERC721 {
     }
 
     // internal helper functions
-
-    function _extractAddressFromdid(
-        string memory did
-    ) internal pure returns (string memory) {
-        string memory prefix = "did:ethr:";
-        strings.slice memory s = did.toSlice();
-        strings.slice memory prefixSlice = prefix.toSlice();
-        strings.slice memory addressSlice = s.rsplit(prefixSlice);
-        return _toLower(addressSlice.toString());
-    }
-
     function _isStringEqual(
         string memory str1,
         string memory str2
     ) internal pure returns (bool) {
         return keccak256(abi.encode(str1)) == keccak256(abi.encode(str2));
-    }
-
-    function _toLower(string memory str) internal pure returns (string memory) {
-        bytes memory bStr = bytes(str);
-        bytes memory bLower = new bytes(bStr.length);
-        for (uint256 i = 0; i < bStr.length; i++) {
-            // Uppercase character...
-            if ((uint8(bStr[i]) >= 65) && (uint8(bStr[i]) <= 90)) {
-                // So we add 32 to make it lowercase
-                bLower[i] = bytes1(uint8(bStr[i]) + 32);
-            } else {
-                bLower[i] = bStr[i];
-            }
-        }
-        return string(bLower);
     }
 }
