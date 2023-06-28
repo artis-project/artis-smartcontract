@@ -77,8 +77,8 @@ contract Artwork is ERC721 {
             artworks[data.id].recipient = data.recipient;
         }
         if (data.logger != address(1)) {
-            require(_isStringEqual(artworks[data.id].status, "IN_TRANSIT"),
-            "logger cannot be updated in transit"
+            require(!(_isStringEqual(artworks[data.id].status, "IN_TRANSIT")),
+            "logger cannot be updated in transit 403"
             );
             artworks[data.id].logger = data.logger;
         }
@@ -156,30 +156,30 @@ contract Artwork is ERC721 {
     // modifiers
 
     modifier exists(uint256 tokenId) {
-        require(_exists(tokenId), "Token does not exist");
+        require(_exists(tokenId), "Token does not exist 404");
         _;
     }
 
     modifier onlyAdmin() {
         require(
             msg.sender == smartcontractAdmin,
-            "only accessible by smartcontractAdmin wallet"
+            "only accessible by smartcontractAdmin wallet 403"
         );
         _;
     }
 
     modifier onlyOwner(address sender, uint256 tokenId) {
-        require(ownerOf(tokenId) == sender, "sender is not authorized");
+        require(ownerOf(tokenId) == sender, "sender is not authorized 403");
         _;
     }
 
     modifier onlyLogger(address sender, uint256 tokenId) {
-        require(loggerOf(tokenId) == sender, "sender is not authorized");
+        require(loggerOf(tokenId) == sender, "sender is not authorized 403");
         _;
     }
 
     modifier read(address sender, uint256 tokenId) {
-        require(isAuthorizedRead(sender, tokenId), "sender is not authorized");
+        require(isAuthorizedRead(sender, tokenId), "sender is not authorized 403");
         _;
     }
 
@@ -187,7 +187,7 @@ contract Artwork is ERC721 {
         if (data.violationTimestamp != 0) {
             require(
                 sender == loggerOf(data.id),
-                "only logger is allowed to access this field"
+                "only logger is allowed to access this field 403"
             );
         } else {
             require(sender == ownerOf(data.id));
