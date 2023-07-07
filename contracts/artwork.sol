@@ -20,13 +20,84 @@ contract Artwork is ERC721 {
         address carrier;
         address logger;
         address recipient;
-        string status;
+        Status status;
         uint256 violationTimestamp;
     }
 
-    mapping(uint256 => ArtworkData) internal artworks;
+    struct StatusApprovals {
+        bool carrier;
+        bool owner;
+        bool recipient;
+    }
 
-    event Updated(uint256 indexed tokenId, ArtworkData newData, address owner);
+    enum StatusValue {
+        IN_TRANSIT,
+        TO_BE_DELIVERED,
+        DELIVERED,
+        NONE
+    }
+
+    function getStatusString(StatusValue value)
+        internal
+        view
+        onlyAdmin
+        returns (string memory)
+    {
+        if (uint256(value) == uint256(StatusValue.IN_TRANSIT)) {
+            return "IN_TRANSIT";
+        } else if (uint256(value) == uint256(StatusValue.TO_BE_DELIVERED)) {
+            return "TO_BE_DELIVERED";
+        } else if (uint256(value) == uint256(StatusValue.DELIVERED)) {
+            return "DELIVERED";
+        } else {
+            return "NONE";
+        }
+    }
+
+    function getStatusEnum(string memory value)
+        internal
+        view
+        onlyAdmin
+        returns (StatusValue)
+    {
+        if (_isStringEqual(value, "IN_TRANSIT")) {
+            return StatusValue.IN_TRANSIT;
+        } else if (_isStringEqual(value, "TO_BE_DELIVERED")) {
+            return StatusValue.TO_BE_DELIVERED;
+        } else if (_isStringEqual(value, "DELIVERED")) {
+            return StatusValue.DELIVERED;
+        } else if (_isStringEqual(value, "NONE")) {
+            return StatusValue.NONE;
+        } else {
+            revert("Provided status is not valid 400");
+        }
+    }
+
+    struct Status {
+        string currentStatus;
+        string requestedStatus;
+    }
+
+    mapping(uint256 => ArtworkData) internal artworks;
+    mapping(uint256 => mapping(StatusValue => StatusApprovals))
+        internal approvals;
+
+    event Updated(
+        uint256 indexed tokenId,
+        ArtworkData newData,
+        address owner,
+        StatusApprovals approvals
+    );
+    event StatusApproved(
+        uint256 indexed tokenId,
+        StatusApprovals approvals,
+        address approver
+    );
+    event ApprovalMissing(
+        uint256 indexed tokenId,
+        string requestedStatus,
+        address missingApproval
+    );
 
     constructor() ERC721("Artwork", "ARTIS") {
         smartcontractAdmin = msg.sender;
@@ -42,30 +113,193 @@ contract Artwork is ERC721 {
             carrier: data.carrier,
             logger: data.logger,
             recipient: data.recipient,
-            status: "MINTED",
-            violationTimestamp: 0
+            violationTimestamp: 0,
+            status: Status({
+                currentStatus: getStatusString(StatusValue.TO_BE_DELIVERED),
+                requestedStatus: getStatusString(StatusValue.NONE)
+            })
         });
         artworks[tokenId] = newArtwork;
     }
 
     // setters
-    function changeSmartContractAdmin(
-        address newsmartcontractAdmin
-    ) public onlyAdmin {
+    function changeSmartContractAdmin(address newsmartcontractAdmin)
+        public
+        onlyAdmin
+    {
         smartcontractAdmin = newsmartcontractAdmin;
+    }
+
+    function checkSenderApproval(
+        uint256 tokenId,
+        address sender,
+        StatusValue status
+    ) internal view read(sender, tokenId) onlyAdmin returns (bool) {
+        if (sender == ownerOf(tokenId)) {
+            return approvals[tokenId][status].owner;
+        } else if (sender == carrierOf(tokenId)) {
+            return approvals[tokenId][status].carrier;
+        } else if (sender == recipientOf(tokenId)) {
+            return approvals[tokenId][status].recipient;
+        } else {
+            return false;
+        }
+    }
+
+    function setSenderApproval(
+        uint256 tokenId,
+        address sender,
+        StatusValue status,
+        bool approval
+    ) internal read(sender, tokenId) onlyAdmin {
+        if (sender == ownerOf(tokenId)) {
+            approvals[tokenId][status].owner = approval;
+        } else if (sender == carrierOf(tokenId)) {
+            approvals[tokenId][status].carrier = approval;
+        } else if (sender == recipientOf(tokenId)) {
+            approvals[tokenId][status].recipient = approval;
+        }
+    }
+
+    function setCurrentStatus(uint256 tokenId, StatusValue requestedStatus)
+        internal
+        onlyAdmin
+    {
+        artworks[tokenId].status.currentStatus = getStatusString(
+            requestedStatus
+        );
+        artworks[tokenId].status.requestedStatus = getStatusString(
+            StatusValue.NONE
+        );
+        resetApprovals(tokenId);
+    }
+
+    function resetApprovals(uint256 tokenId) internal onlyAdmin {
+        delete approvals[tokenId][StatusValue.TO_BE_DELIVERED];
+        delete approvals[tokenId][StatusValue.DELIVERED];
+        delete approvals[tokenId][StatusValue.IN_TRANSIT];
+        delete approvals[tokenId][StatusValue.NONE];
+    }
+
+    function updateStatus(
+        uint256 tokenId,
+        address sender,
+        StatusValue currentStatus,
+        StatusValue requestedStatus
+    ) internal onlyAdmin {
+        setSenderApproval(tokenId, sender, requestedStatus, true);
+        // case to change from TO_BE_DELIVERED to IN_TRANSIT -> carrier and owner have to agree
+        if (
+            currentStatus == StatusValue.TO_BE_DELIVERED &&
+            requestedStatus == StatusValue.IN_TRANSIT
+        ) {
+            if (
+                approvals[tokenId][requestedStatus].carrier &&
+                approvals[tokenId][requestedStatus].owner
+            ) {
+                //status change is valid
+                setCurrentStatus(tokenId, requestedStatus);
+                emit StatusApproved(
+                    tokenId,
+                    approvals[tokenId][requestedStatus],
+                    sender
+                );
+            } else {
+                // emit event with missing approval
+                address otherParty;
+                if (!approvals[tokenId][requestedStatus].carrier) {
+                    otherParty = carrierOf(tokenId);
+                } else {
+                    otherParty = ownerOf(tokenId);
+                }
+                emit ApprovalMissing(
+                    tokenId,
+                    getStatusString(requestedStatus),
+                    otherParty
+                );
+            }
+        }
+        // case to change from IN_TRANSIT to DELIVERED -> carrier and recipient have to agree
+        else if (
+            currentStatus == StatusValue.IN_TRANSIT &&
+            requestedStatus == StatusValue.DELIVERED
+        ) {
+            if (
+                approvals[tokenId][requestedStatus].carrier &&
+                approvals[tokenId][requestedStatus].recipient
+            ) {
+                //status change is valid
+                setCurrentStatus(tokenId, requestedStatus);
+                emit StatusApproved(
+                    tokenId,
+                    approvals[tokenId][requestedStatus],
+                    sender
+                );
+            } else {
+                // emit event with missing approval
+                address otherParty;
+                if (!approvals[tokenId][requestedStatus].carrier) {
+                    otherParty = carrierOf(tokenId);
+                } else {
+                    otherParty = recipientOf(tokenId);
+                }
+                emit ApprovalMissing(
+                    tokenId,
+                    getStatusString(requestedStatus),
+                    otherParty
+                );
+            }
+        }
+        // case to change from DELIVERED to TO_BE_DELIVERED -> owner decides soley
+        else if (
+            currentStatus == StatusValue.DELIVERED &&
+            requestedStatus == StatusValue.TO_BE_DELIVERED
+        ) {
+            require(
+                sender == ownerOf(tokenId),
+                "only the owner is allowed to change the status from DELIVERED to TO_BE_DELIVERED 403"
+            );
+            setCurrentStatus(tokenId, requestedStatus);
+            emit StatusApproved(
+                tokenId,
+                approvals[tokenId][requestedStatus],
+                sender
+            );
+        } else {
+            revert(
+                "Status update is not allowed in respect to currentStatus 403"
+            );
+        }
     }
 
     // because the artwork data always needs to have all properties populated
     // the Address(1) is used to mark no change, Address(0) is reserved for not set
-    function updateArtworkData(
-        ArtworkData memory data,
-        address sender
-    ) public onlyAdmin exists(data.id) write(sender, data) {
+    function updateArtworkData(ArtworkData memory data, address sender)
+        public
+        onlyAdmin
+        exists(data.id)
+        write(sender, data)
+    {
         if (data.violationTimestamp != 0) {
             artworks[data.id].violationTimestamp = data.violationTimestamp;
         }
-        if ((bytes(data.status).length != 0)) {
-            artworks[data.id].status = data.status;
+        if (bytes(data.status.requestedStatus).length != 0) {
+            if (
+                getStatusEnum(artworks[data.id].status.requestedStatus) !=
+                getStatusEnum(data.status.requestedStatus)
+            ) {
+                resetApprovals(data.id);
+                // set new requestedStatus after resetting all approvals
+                artworks[data.id].status.requestedStatus = data
+                    .status
+                    .requestedStatus;
+            }
+            updateStatus(
+                data.id,
+                sender,
+                getStatusEnum(artworks[data.id].status.currentStatus),
+                getStatusEnum(data.status.requestedStatus)
+            );
         }
         if ((bytes(data.objectId).length != 0)) {
             artworks[data.id].objectId = data.objectId;
@@ -77,19 +311,29 @@ contract Artwork is ERC721 {
             artworks[data.id].recipient = data.recipient;
         }
         if (data.logger != address(1)) {
-            require(!(_isStringEqual(artworks[data.id].status, "IN_TRANSIT")),
-            "logger cannot be updated in transit 403"
+            require(
+                !(
+                    _isStringEqual(
+                        artworks[data.id].status.currentStatus,
+                        "IN_TRANSIT"
+                    )
+                ),
+                "logger cannot be updated in transit 403"
             );
             artworks[data.id].logger = data.logger;
         }
-        emit Updated(data.id, artworks[data.id], ownerOf(data.id));
+        emit Updated(
+            data.id,
+            artworks[data.id],
+            ownerOf(data.id),
+            approvals[data.id][
+                getStatusEnum(artworks[data.id].status.requestedStatus)
+            ]
+        );
     }
 
     // getter
-    function getArtworkData(
-        uint256 tokenId,
-        address sender
-    )
+    function getArtworkData(uint256 tokenId, address sender)
         public
         view
         onlyAdmin
@@ -102,43 +346,84 @@ contract Artwork is ERC721 {
             address carrier,
             address logger,
             address recipient,
-            string memory status,
+            string memory currentStatus,
+            string memory requestedStatus,
+            bool carrierApproval,
+            bool ownerApproval,
+            bool recipientApproval,
             uint256 violationTimestamp
         )
     {
+        StatusValue status = getStatusEnum(
+            artworks[tokenId].status.requestedStatus
+        );
+
         id = artworks[tokenId].id;
         objectId = artworks[tokenId].objectId;
         owner = ownerOf(tokenId);
         carrier = artworks[tokenId].carrier;
         logger = artworks[tokenId].logger;
         recipient = artworks[tokenId].recipient;
-        status = artworks[tokenId].status;
+        currentStatus = artworks[tokenId].status.currentStatus;
+        requestedStatus = artworks[tokenId].status.requestedStatus;
+        carrierApproval = approvals[tokenId][status].carrier;
+        ownerApproval = approvals[tokenId][status].owner;
+        recipientApproval = approvals[tokenId][status].recipient;
         violationTimestamp = artworks[tokenId].violationTimestamp;
     }
 
+    function getPendingApprovals(uint256 tokenId, StatusValue status)
+        internal
+        view
+        onlyAdmin
+        returns (
+            bool carrier,
+            bool recipient,
+            bool owner
+        )
+    {
+        carrier = approvals[tokenId][status].carrier;
+        recipient = approvals[tokenId][status].recipient;
+        owner = approvals[tokenId][status].owner;
+    }
+
     /// used to get addresses of different roles of an artwork (alongside ERC721 ownerOf)
-    function carrierOf(
-        uint256 tokenId
-    ) public view onlyAdmin exists(tokenId) returns (address) {
+    function carrierOf(uint256 tokenId)
+        public
+        view
+        onlyAdmin
+        exists(tokenId)
+        returns (address)
+    {
         return artworks[tokenId].carrier;
     }
 
-    function loggerOf(
-        uint256 tokenId
-    ) public view onlyAdmin exists(tokenId) returns (address) {
+    function loggerOf(uint256 tokenId)
+        public
+        view
+        onlyAdmin
+        exists(tokenId)
+        returns (address)
+    {
         return artworks[tokenId].logger;
     }
 
-    function recipientOf(
-        uint256 tokenId
-    ) public view onlyAdmin exists(tokenId) returns (address) {
+    function recipientOf(uint256 tokenId)
+        public
+        view
+        onlyAdmin
+        exists(tokenId)
+        returns (address)
+    {
         return artworks[tokenId].recipient;
     }
 
-    function isAuthorizedRead(
-        address sender,
-        uint256 tokenId
-    ) public view onlyAdmin returns (bool) {
+    function isAuthorizedRead(address sender, uint256 tokenId)
+        public
+        view
+        onlyAdmin
+        returns (bool)
+    {
         return
             ownerOf(tokenId) == sender ||
             carrierOf(tokenId) == sender ||
@@ -147,9 +432,12 @@ contract Artwork is ERC721 {
 
     // overrides
 
-    function supportsInterface(
-        bytes4 interfaceId
-    ) public view override(ERC721) returns (bool) {
+    function supportsInterface(bytes4 interfaceId)
+        public
+        view
+        override(ERC721)
+        returns (bool)
+    {
         return super.supportsInterface(interfaceId);
     }
 
@@ -179,7 +467,10 @@ contract Artwork is ERC721 {
     }
 
     modifier read(address sender, uint256 tokenId) {
-        require(isAuthorizedRead(sender, tokenId), "sender is not authorized 403");
+        require(
+            isAuthorizedRead(sender, tokenId),
+            "sender is not authorized 403"
+        );
         _;
     }
 
@@ -187,19 +478,31 @@ contract Artwork is ERC721 {
         if (data.violationTimestamp != 0) {
             require(
                 sender == loggerOf(data.id),
-                "only logger is allowed to access this field 403"
+                "only logger is allowed to add a violationTimestamp 403"
             );
-        } else {
-            require(sender == ownerOf(data.id));
+        }
+        require(
+            bytes(data.status.currentStatus).length == 0,
+            "currentStatus is updated automatically 403"
+        );
+        if (sender != ownerOf(data.id)) {
+            require(
+                bytes(data.objectId).length == 0 ||
+                    data.carrier == address(1) ||
+                    data.recipient == address(1) ||
+                    data.logger == address(1),
+                "only owner has write permissions 403"
+            );
         }
         _;
     }
 
     // internal helper functions
-    function _isStringEqual(
-        string memory str1,
-        string memory str2
-    ) internal pure returns (bool) {
+    function _isStringEqual(string memory str1, string memory str2)
+        internal
+        pure
+        returns (bool)
+    {
         return keccak256(abi.encode(str1)) == keccak256(abi.encode(str2));
     }
 }
