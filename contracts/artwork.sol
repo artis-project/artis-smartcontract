@@ -222,20 +222,17 @@ contract Artwork is ERC721 {
 
             if (ownerOf(i) == _address) {
                 owner[index] = artwork.id;
-                index++;
             }
             if (recipientOf(i) == _address) {
                 recipient[index] = artwork.id;
-                index++;
             }
             if (carrierOf(i) == _address) {
                 carrier[index] = artwork.id;
-                index++;
             }
             if (loggerOf(i) == _address) {
                 logger[index] = artwork.id;
-                index++;
             }
+            index++;
         }
     }
 
