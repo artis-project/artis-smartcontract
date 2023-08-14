@@ -34,13 +34,6 @@ contract Artwork is ERC721 {
         string requestedStatus;
     }
 
-    struct balance {
-        uint256[] carrier;
-        uint256[] recipient;
-        uint256[] owner;
-        uint256[] logger;
-    }
-
     enum StatusValue {
         IN_TRANSIT,
         TO_BE_DELIVERED,
@@ -236,6 +229,8 @@ contract Artwork is ERC721 {
         }
     }
 
+    // helper functions
+    // functions for multi-party status change approval
     function getPendingApprovals(uint256 tokenId, StatusValue status)
         internal
         view
@@ -251,9 +246,6 @@ contract Artwork is ERC721 {
         owner = approvals[tokenId][status].owner;
     }
 
-    // helper functions
-
-    // functions for multi-party status change approval
     function checkSenderApproval(
         uint256 tokenId,
         address sender,
@@ -282,6 +274,42 @@ contract Artwork is ERC721 {
             approvals[tokenId][status].carrier = approval;
         } else if (sender == recipientOf(tokenId)) {
             approvals[tokenId][status].recipient = approval;
+        }
+    }
+
+    function getStatusString(StatusValue value)
+        internal
+        view
+        onlyAdmin
+        returns (string memory)
+    {
+        if (uint256(value) == uint256(StatusValue.IN_TRANSIT)) {
+            return "IN_TRANSIT";
+        } else if (uint256(value) == uint256(StatusValue.TO_BE_DELIVERED)) {
+            return "TO_BE_DELIVERED";
+        } else if (uint256(value) == uint256(StatusValue.DELIVERED)) {
+            return "DELIVERED";
+        } else {
+            return "NONE";
+        }
+    }
+
+    function getStatusEnum(string memory value)
+        internal
+        view
+        onlyAdmin
+        returns (StatusValue)
+    {
+        if (value.equal("IN_TRANSIT")) {
+            return StatusValue.IN_TRANSIT;
+        } else if (value.equal("TO_BE_DELIVERED")) {
+            return StatusValue.TO_BE_DELIVERED;
+        } else if (value.equal("DELIVERED")) {
+            return StatusValue.DELIVERED;
+        } else if (value.equal("NONE")) {
+            return StatusValue.NONE;
+        } else {
+            revert("Provided status is not valid 400");
         }
     }
 
@@ -427,54 +455,6 @@ contract Artwork is ERC721 {
         return artworks[tokenId].recipient;
     }
 
-    function isAuthorizedRead(address sender, uint256 tokenId)
-        internal
-        view
-        onlyAdmin
-        returns (bool)
-    {
-        return
-            ownerOf(tokenId) == sender ||
-            carrierOf(tokenId) == sender ||
-            recipientOf(tokenId) == sender;
-    }
-
-    function getStatusString(StatusValue value)
-        internal
-        view
-        onlyAdmin
-        returns (string memory)
-    {
-        if (uint256(value) == uint256(StatusValue.IN_TRANSIT)) {
-            return "IN_TRANSIT";
-        } else if (uint256(value) == uint256(StatusValue.TO_BE_DELIVERED)) {
-            return "TO_BE_DELIVERED";
-        } else if (uint256(value) == uint256(StatusValue.DELIVERED)) {
-            return "DELIVERED";
-        } else {
-            return "NONE";
-        }
-    }
-
-    function getStatusEnum(string memory value)
-        internal
-        view
-        onlyAdmin
-        returns (StatusValue)
-    {
-        if (value.equal("IN_TRANSIT")) {
-            return StatusValue.IN_TRANSIT;
-        } else if (value.equal("TO_BE_DELIVERED")) {
-            return StatusValue.TO_BE_DELIVERED;
-        } else if (value.equal("DELIVERED")) {
-            return StatusValue.DELIVERED;
-        } else if (value.equal("NONE")) {
-            return StatusValue.NONE;
-        } else {
-            revert("Provided status is not valid 400");
-        }
-    }
-
     // overrides
 
     function supportsInterface(bytes4 interfaceId)
@@ -501,19 +481,11 @@ contract Artwork is ERC721 {
         _;
     }
 
-    modifier onlyOwner(address sender, uint256 tokenId) {
-        require(ownerOf(tokenId) == sender, "sender is not authorized 403");
-        _;
-    }
-
-    modifier onlyLogger(address sender, uint256 tokenId) {
-        require(loggerOf(tokenId) == sender, "sender is not authorized 403");
-        _;
-    }
-
     modifier read(address sender, uint256 tokenId) {
         require(
-            isAuthorizedRead(sender, tokenId),
+            ownerOf(tokenId) == sender ||
+            carrierOf(tokenId) == sender ||
+            recipientOf(tokenId) == sender,
             "sender is not authorized 403"
         );
         _;
